@@ -1,0 +1,37 @@
+{
+ "actions": [],
+ "creation": "2024-01-01 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "idx_no",
+  "rule"
+ ],
+ "fields": [
+  {
+   "fieldname": "idx_no",
+   "fieldtype": "Int",
+   "label": "Idx No"
+  },
+  {
+   "fieldname": "rule",
+   "fieldtype": "Small Text",
+   "label": "Rule",
+   "reqd": 1,
+   "in_list_view": 1
+  }
+ ],
+ "links": [],
+ "modified": "2024-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Rule Management",
+ "name": "Rule List",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "custom": 0,
+ "istable": 1,
+ "is_submittable": 0
+}

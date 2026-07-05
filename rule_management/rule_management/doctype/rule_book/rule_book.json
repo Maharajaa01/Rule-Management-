@@ -1,0 +1,91 @@
+{
+ "actions": [],
+ "creation": "2024-01-01 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "rule_book_name",
+  "rule_category",
+  "icon",
+  "youtube_url",
+  "audio_file",
+  "description",
+  "is_active",
+  "rules"
+ ],
+ "fields": [
+  {
+   "fieldname": "rule_book_name",
+   "fieldtype": "Data",
+   "label": "Rule Book Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "rule_category",
+   "fieldtype": "Link",
+   "label": "Rule Category",
+   "options": "Rule Category",
+   "reqd": 1
+  },
+  {
+   "fieldname": "icon",
+   "fieldtype": "Data",
+   "label": "Icon"
+  },
+  {
+   "fieldname": "youtube_url",
+   "fieldtype": "Data",
+   "label": "YouTube URL"
+  },
+  {
+   "fieldname": "audio_file",
+   "fieldtype": "Attach",
+   "label": "Audio File"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active",
+   "default": "1"
+  },
+  {
+   "fieldname": "rules",
+   "fieldtype": "Table",
+   "label": "Rules",
+   "options": "Rule List"
+  }
+ ],
+ "links": [],
+ "modified": "2024-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Rule Management",
+ "name": "Rule Book",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "Staff",
+   "read": 1,
+   "write": 0,
+   "create": 0,
+   "delete": 0
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "custom": 0,
+ "istable": 0,
+ "is_submittable": 0
+}
