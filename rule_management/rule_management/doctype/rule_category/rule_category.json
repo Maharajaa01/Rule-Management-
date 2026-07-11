@@ -1,14 +1,17 @@
 {
  "actions": [],
- "autoname": "RC_BB.###",
+ "autoname": "field:category_name",
  "creation": "2024-01-01 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "is_parent",
+  "is_active",
   "category_name",
+  "parent_category",
   "icon",
-  "description",
-  "is_active"
+  "section_break_xwrg",
+  "description"
  ],
  "fields": [
   {
@@ -34,14 +37,31 @@
    "fieldname": "is_active",
    "fieldtype": "Check",
    "label": "Is Active"
+  },
+  {
+   "depends_on": "eval:doc.is_parent == 0",
+   "fieldname": "parent_category",
+   "fieldtype": "Link",
+   "label": "Parent Category",
+   "options": "Rule Category"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_parent",
+   "fieldtype": "Check",
+   "label": "Is Parent"
+  },
+  {
+   "fieldname": "section_break_xwrg",
+   "fieldtype": "Section Break"
   }
  ],
  "links": [],
- "modified": "2026-07-06 22:15:13.133353",
+ "modified": "2026-07-11 09:12:35.071448",
  "modified_by": "Administrator",
  "module": "Rule Management",
  "name": "Rule Category",
- "naming_rule": "Expression",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

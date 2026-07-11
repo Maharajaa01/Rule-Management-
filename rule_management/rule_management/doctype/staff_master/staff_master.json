@@ -6,14 +6,14 @@
  "engine": "InnoDB",
  "field_order": [
   "employee_name",
+  "user",
+  "status",
+  "column_break_tgba",
+  "staff_category",
   "mobile_no",
   "email",
-  "user",
-  "staff_category",
-  "status",
-  "assigned_categories",
-  "login_id",
-  "password"
+  "section_break_zmhu",
+  "assigned_categories"
  ],
  "fields": [
   {
@@ -43,21 +43,6 @@
    "unique": 1
   },
   {
-   "fieldname": "login_id",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Login ID",
-   "reqd": 1,
-   "unique": 1
-  },
-  {
-   "fieldname": "password",
-   "fieldtype": "Password",
-   "in_list_view": 1,
-   "label": "Password",
-   "reqd": 1
-  },
-  {
    "fieldname": "staff_category",
    "fieldtype": "Link",
    "label": "Staff Category",
@@ -75,10 +60,18 @@
    "fieldtype": "Table",
    "label": "Assigned Categories",
    "options": "Assigned Rule Category"
+  },
+  {
+   "fieldname": "column_break_tgba",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_zmhu",
+   "fieldtype": "Section Break"
   }
  ],
  "links": [],
- "modified": "2026-07-06 22:14:39.590779",
+ "modified": "2026-07-11 09:52:09.262775",
  "modified_by": "Administrator",
  "module": "Rule Management",
  "name": "Staff Master",

@@ -1,6 +1,6 @@
 {
  "actions": [],
- "autoname": "STFC_BB.###",
+ "autoname": "field:category_name",
  "creation": "2024-01-01 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -16,7 +16,8 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Category Name",
-   "reqd": 1
+   "reqd": 1,
+   "unique": 1
   },
   {
    "fieldname": "icon",
@@ -36,11 +37,11 @@
   }
  ],
  "links": [],
- "modified": "2026-07-06 22:15:39.415802",
+ "modified": "2026-07-11 09:44:47.474673",
  "modified_by": "Administrator",
  "module": "Rule Management",
  "name": "Staff Category",
- "naming_rule": "Expression",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
