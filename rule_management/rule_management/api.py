@@ -10,51 +10,88 @@ def return_error(message, status_code=400):
     return {"status": "error", "message": message}
 
 def is_admin():
-    return "Administrator" in frappe.get_roles(frappe.session.user)
+    if frappe.session.user == "Administrator":
+        return True
+    
+    try:
+        staff = get_staff_profile()
+        return staff.staff_category == "Admin"
+    except Exception:
+        return False
 
 def get_staff_profile(user=None):
     if not user:
         user = frappe.session.user
-    staff = frappe.db.get_all("Staff Master", filters={"user": user, "status": "Active"}, fields=["name", "employee_name", "staff_category"])
+        
+    # Use request-local caching to prevent duplicate queries for the same user profile
+    cache_key = f"staff_profile_{user}"
+    if hasattr(frappe.local, cache_key):
+        return getattr(frappe.local, cache_key)
+        
+    staff = frappe.db.get_all("Staff Master", filters={"user": user, "status": "Active"}, fields=["name", "employee_name", "staff_category", "access"])
     if not staff:
         frappe.throw(_("Staff profile not found for current user."), frappe.PermissionError)
+        
+    setattr(frappe.local, cache_key, staff[0])
     return staff[0]
 
 # --- Authentication ---
 @frappe.whitelist(allow_guest=True)
 def login(login_id, password):
     try:
-        # Check Staff Master
-        staff = frappe.db.get_all("Staff Master", filters={"login_id": login_id, "status": "Active"}, fields=["name", "user"])
-        if not staff:
-            return return_error("Invalid login credentials or inactive account", 401)
-        
-        staff_name = staff[0].name
-        
-        # Verify password (handles both Data and Password fieldtypes depending on frappe version implementation)
-        try:
-            saved_password = frappe.get_password("Staff Master", staff_name, "password")
-        except Exception:
-            saved_password = frappe.db.get_value("Staff Master", staff_name, "password")
-            
-        if saved_password != password:
-            return return_error("Invalid login credentials", 401)
-        
-        user = staff[0].user
-        if not user:
-            return return_error("No system user linked to this staff profile", 400)
-            
-        # Log in the user via Frappe's LoginManager to establish session
         from frappe.auth import LoginManager
-        frappe.local.login_manager = LoginManager()
-        frappe.local.login_manager.login_as(user)
         
-        return return_success({"staff_id": staff_name, "user": user}, "Login successful")
+        # Populate form_dict so LoginManager can authenticate the user natively
+        frappe.local.form_dict.usr = login_id
+        frappe.local.form_dict.pwd = password
+        
+        try:
+            login_manager = LoginManager()
+            login_manager.authenticate()
+            login_manager.post_login()
+        except frappe.exceptions.AuthenticationError:
+            return return_error("Invalid login credentials", 401)
+            
+        user = frappe.session.user
+        
+        # Check Staff Master to ensure the logged-in user is an active staff
+        staff = frappe.db.get_all("Staff Master", filters={"user": user, "status": "Active"}, fields=["name", "employee_name", "staff_category", "access"])
+        if not staff:
+            # Logout if they aren't an active staff member
+            frappe.local.login_manager.logout()
+            return return_error("Active staff profile not found for this user", 401)
+        
+        staff_id = staff[0].name
+        employee_name = staff[0].employee_name
+        staff_category = staff[0].staff_category
+        staff_access = staff[0].access or "View Only"
+        
+        return return_success({
+            "staff_id": staff_id, 
+            "employee_name": employee_name,
+            "user": user,
+            "role": "Administrator" if staff_category == "Admin" else "Staff",
+            "access": staff_access
+        }, "Login successful")
+        
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Rule Management Login API")
         return return_error(str(e), 500)
 
 # --- Staff APIs ---
+@frappe.whitelist()
+def reset_password(new_password):
+    try:
+        user = frappe.session.user
+        if user == "Guest":
+            return return_error("Not logged in", 401)
+            
+        doc = frappe.get_doc("User", user)
+        doc.new_password = new_password
+        doc.save(ignore_permissions=True)
+        return return_success(None, "Password updated successfully")
+    except Exception as e:
+        return return_error(str(e), 500)
 @frappe.whitelist()
 def get_logged_in_staff_profile():
     try:
@@ -100,35 +137,82 @@ def get_staff_dashboard():
 @frappe.whitelist()
 def get_assigned_rule_categories():
     try:
-        staff = get_staff_profile()
-        doc = frappe.get_doc("Staff Master", staff.name)
-        categories = [d.rule_category for d in doc.assigned_categories]
-        
-        if not categories:
-            return return_success([])
+        if is_admin():
+            cats = frappe.db.get_all("Rule Category", filters={"is_active": 1}, fields=["name", "category_name", "description", "is_parent", "parent_category"])
+        else:
+            staff = get_staff_profile()
+            doc = frappe.get_doc("Staff Master", staff.name)
+            categories = [d.rule_category for d in doc.assigned_categories]
             
-        cats = frappe.db.get_all("Rule Category", filters={"name": ("in", categories), "is_active": 1}, fields=["name", "category_name", "icon", "description"])
-        return return_success(cats)
+            if not categories:
+                return return_success([])
+                
+            # Fetch directly assigned categories AND their children
+            cats = frappe.db.get_all("Rule Category", 
+                filters={"is_active": 1}, 
+                or_filters={"name": ("in", categories), "parent_category": ("in", categories)},
+                fields=["name", "category_name", "description", "is_parent", "parent_category"]
+            )
+            
+        # Format for frontend
+        formatted = [{"id": c.name, "category_name": c.category_name, "description": c.description, "is_parent": c.is_parent, "parent_category": c.parent_category} for c in cats]
+        return return_success(formatted)
     except frappe.PermissionError as e:
         return return_error(str(e), 403)
     except Exception as e:
         return return_error(str(e), 500)
 
 @frappe.whitelist()
-def get_rule_books(rule_category):
+def get_rule_books(rule_category=None):
     try:
-        if not rule_category:
-            return return_error("Rule Category is required", 400)
-            
-        staff = get_staff_profile()
-        doc = frappe.get_doc("Staff Master", staff.name)
-        categories = [d.rule_category for d in doc.assigned_categories]
+        filters = {"is_active": 1}
         
-        if rule_category not in categories:
-            return return_error("You do not have permission to access this category", 403)
+        if not is_admin():
+            staff = get_staff_profile()
+            doc = frappe.get_doc("Staff Master", staff.name)
+            categories = [d.rule_category for d in doc.assigned_categories]
             
-        books = frappe.db.get_all("Rule Book", filters={"rule_category": rule_category, "is_active": 1}, fields=["name", "rule_book_name", "icon", "description"])
-        return return_success(books)
+            # Fetch child categories to grant inherited access
+            child_cats = frappe.db.get_all("Rule Category", filters={"parent_category": ("in", categories), "is_active": 1}, fields=["name"])
+            allowed_categories = categories + [c.name for c in child_cats]
+            
+            if rule_category and rule_category not in allowed_categories:
+                return return_error("You do not have permission to access this category", 403)
+                
+            if rule_category:
+                filters["rule_category"] = rule_category
+            else:
+                if not allowed_categories:
+                    return return_success([])
+                filters["rule_category"] = ("in", allowed_categories)
+        else:
+            if rule_category:
+                filters["rule_category"] = rule_category
+                
+        books = frappe.db.get_all("Rule Book", filters=filters, fields=["name", "rule_book_name", "rule_category", "youtube_url", "audio_file"])
+        
+        # Batch fetch rules to prevent N+1 queries (1 query instead of fetching doc for each book)
+        book_names = [b.name for b in books]
+        rules_by_book = {}
+        if book_names:
+            all_rules = frappe.db.get_all("Rule List", filters={"parent": ("in", book_names)}, fields=["parent", "rule", "idx"], order_by="idx asc")
+            for r in all_rules:
+                if r.parent not in rules_by_book:
+                    rules_by_book[r.parent] = []
+                rules_by_book[r.parent].append(r.rule)
+        
+        formatted = []
+        for b in books:
+            formatted.append({
+                "id": b.name,
+                "book_title": b.rule_book_name,
+                "rule_category": b.rule_category,
+                "youtube_url": b.youtube_url or "",
+                "audio_url": b.audio_file or "",
+                "rules": rules_by_book.get(b.name, [])
+            })
+            
+        return return_success(formatted)
     except frappe.PermissionError as e:
         return return_error(str(e), 403)
     except Exception as e:
@@ -165,9 +249,25 @@ def get_rule_book_detail(rule_book):
         return return_error(str(e), 500)
 
 # --- Admin APIs ---
+def has_admin_panel_access():
+    if is_admin():
+        return True
+    staff = get_staff_profile()
+    if getattr(staff, "access", "") in ["Can Edit", "Can Edit and Delete"]:
+        return True
+    return False
+
+def can_delete():
+    if is_admin():
+        return True
+    staff = get_staff_profile()
+    if getattr(staff, "access", "") == "Can Edit and Delete":
+        return True
+    return False
+
 def admin_only():
-    if not is_admin():
-        frappe.throw(_("Not permitted. Administrator access required."), frappe.PermissionError)
+    if not has_admin_panel_access():
+        frappe.throw(_("Not permitted. Elevated access required."), frappe.PermissionError)
 
 @frappe.whitelist()
 def admin_dashboard():
@@ -184,10 +284,49 @@ def admin_dashboard():
     except Exception as e:
         return return_error(str(e), 500)
 
+@frappe.whitelist()
+def get_staff_list():
+    try:
+        admin_only()
+        staff_list = frappe.db.get_all("Staff Master", fields=["name", "employee_name", "user as login_id", "status", "staff_category as role", "mobile_no", "email", "access"])
+        
+        # Batch fetch assigned rule categories for these staff members
+        staff_ids = [s.name for s in staff_list]
+        assigned_categories = {}
+        if staff_ids:
+            cat_docs = frappe.db.get_all("Assigned Rule Category", filters={"parent": ("in", staff_ids)}, fields=["parent", "rule_category"])
+            for c in cat_docs:
+                if c.parent not in assigned_categories:
+                    assigned_categories[c.parent] = []
+                assigned_categories[c.parent].append(c.rule_category)
+        
+        # Format field names to match frontend expectations (id instead of name, role instead of staff_category)
+        formatted_list = []
+        for staff in staff_list:
+            formatted_list.append({
+                "id": staff.name,
+                "employee_name": staff.employee_name,
+                "login_id": staff.login_id,
+                "status": staff.status,
+                "role": "Administrator" if staff.role == "Admin" else "Staff",
+                "access": staff.access or "View Only",
+                "mobile_no": staff.mobile_no,
+                "email": staff.email,
+                "assigned_categories": assigned_categories.get(staff.name, [])
+            })
+            
+        return return_success(formatted_list)
+    except frappe.PermissionError as e:
+        return return_error(str(e), 403)
+    except Exception as e:
+        return return_error(str(e), 500)
+
 # CRUD Helper
 def handle_crud(doctype, action, doc_id=None, data=None):
     admin_only()
     if action == "create":
+        if not can_delete():
+            return return_error("Not permitted to create records. 'Can Edit and Delete' (Full Access) required.", 403)
         if isinstance(data, str):
             data = json.loads(data)
         doc = frappe.get_doc({"doctype": doctype, **data})
@@ -203,6 +342,8 @@ def handle_crud(doctype, action, doc_id=None, data=None):
         doc.save(ignore_permissions=True)
         return return_success(doc.as_dict(), f"{doctype} updated successfully")
     elif action == "delete":
+        if not can_delete():
+            return return_error("Not permitted to delete records. 'Can Edit and Delete' access required.", 403)
         if not doc_id:
             return return_error(f"{doctype} ID required for delete", 400)
         frappe.delete_doc(doctype, doc_id, ignore_permissions=True)

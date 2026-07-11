@@ -8,6 +8,7 @@
   "employee_name",
   "user",
   "status",
+  "access",
   "column_break_tgba",
   "staff_category",
   "mobile_no",
@@ -68,10 +69,16 @@
   {
    "fieldname": "section_break_zmhu",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "access",
+   "fieldtype": "Select",
+   "label": "Access",
+   "options": "View Only\nCan Edit\nCan Edit and Delete"
   }
  ],
  "links": [],
- "modified": "2026-07-11 09:52:09.262775",
+ "modified": "2026-07-11 18:22:14.088920",
  "modified_by": "Administrator",
  "module": "Rule Management",
  "name": "Staff Master",
