@@ -218,6 +218,43 @@ def get_rule_books(rule_category=None):
     except Exception as e:
         return return_error(str(e), 500)
 
+@frappe.whitelist()
+def get_rule_book_detail(rule_book):
+    try:
+        if not rule_book:
+            return return_error("Rule Book is required", 400)
+            
+        book_doc = frappe.get_doc("Rule Book", rule_book)
+        
+        if not is_admin():
+            staff = get_staff_profile()
+            doc = frappe.get_doc("Staff Master", staff.name)
+            categories = [d.rule_category for d in doc.assigned_categories]
+            
+            # Fetch child categories to grant inherited access
+            child_cats = frappe.db.get_all("Rule Category", filters={"parent_category": ("in", categories), "is_active": 1}, fields=["name"])
+            allowed_categories = categories + [c.name for c in child_cats]
+            
+            if book_doc.rule_category not in allowed_categories:
+                return return_error("You do not have permission to access this rule book", 403)
+            
+        if not book_doc.is_active:
+            return return_error("This rule book is inactive", 400)
+            
+        return return_success({
+            "id": book_doc.name,
+            "book_title": book_doc.rule_book_name,
+            "rule_category": book_doc.rule_category,
+            "youtube_url": book_doc.youtube_url or "",
+            "audio_url": book_doc.audio_file or "",
+            "rules": [r.rule for r in book_doc.rules]
+        })
+    except frappe.DoesNotExistError:
+        return return_error("Rule book not found", 404)
+    except frappe.PermissionError as e:
+        return return_error(str(e), 403)
+    except Exception as e:
+        return return_error(str(e), 500)
 
 # --- Admin APIs ---
 def has_admin_panel_access():
@@ -324,14 +361,48 @@ def handle_crud(doctype, action, doc_id=None, data=None):
 @frappe.whitelist()
 def create_staff(data):
     try:
-        return handle_crud("Staff Master", "create", data=data)
+        if isinstance(data, str):
+            data = json.loads(data)
+            
+        frappe_data = {
+            "employee_name": data.get("employee_name"),
+            "login_id": data.get("login_id"),
+            "status": data.get("status"),
+            "role": "Admin" if data.get("role") == "Administrator" else data.get("role"),
+            "access": data.get("access"),
+            "mobile_no": data.get("mobile_no"),
+            "email": data.get("email"),
+            "password": data.get("password")
+        }
+        if "assigned_categories" in data:
+            frappe_data["assigned_categories"] = [{"rule_category": c} for c in data.get("assigned_categories", [])]
+            
+        return handle_crud("Staff Master", "create", data=frappe_data)
     except Exception as e:
         return return_error(str(e), 500)
 
 @frappe.whitelist()
 def update_staff(staff_id, data):
     try:
-        return handle_crud("Staff Master", "update", doc_id=staff_id, data=data)
+        if isinstance(data, str):
+            data = json.loads(data)
+            
+        frappe_data = {
+            "employee_name": data.get("employee_name"),
+            "login_id": data.get("login_id"),
+            "status": data.get("status"),
+            "role": "Admin" if data.get("role") == "Administrator" else data.get("role"),
+            "access": data.get("access"),
+            "mobile_no": data.get("mobile_no"),
+            "email": data.get("email")
+        }
+        if data.get("password"):
+            frappe_data["password"] = data.get("password")
+            
+        if "assigned_categories" in data:
+            frappe_data["assigned_categories"] = [{"rule_category": c} for c in data.get("assigned_categories", [])]
+            
+        return handle_crud("Staff Master", "update", doc_id=staff_id, data=frappe_data)
     except Exception as e:
         return return_error(str(e), 500)
 
@@ -368,14 +439,34 @@ def delete_rule_category(category_id):
 @frappe.whitelist()
 def create_rule_book(data):
     try:
-        return handle_crud("Rule Book", "create", data=data)
+        if isinstance(data, str):
+            data = json.loads(data)
+        
+        frappe_data = {
+            "rule_category": data.get("rule_category"),
+            "rule_book_name": data.get("book_title"),
+            "youtube_url": data.get("youtube_url"),
+            "audio_file": data.get("audio_url"),
+            "rules": [{"rule": r} for r in data.get("rules", [])]
+        }
+        return handle_crud("Rule Book", "create", data=frappe_data)
     except Exception as e:
         return return_error(str(e), 500)
 
 @frappe.whitelist()
 def update_rule_book(book_id, data):
     try:
-        return handle_crud("Rule Book", "update", doc_id=book_id, data=data)
+        if isinstance(data, str):
+            data = json.loads(data)
+            
+        frappe_data = {
+            "rule_category": data.get("rule_category"),
+            "rule_book_name": data.get("book_title"),
+            "youtube_url": data.get("youtube_url"),
+            "audio_file": data.get("audio_url"),
+            "rules": [{"rule": r} for r in data.get("rules", [])]
+        }
+        return handle_crud("Rule Book", "update", doc_id=book_id, data=frappe_data)
     except Exception as e:
         return return_error(str(e), 500)
 
@@ -383,58 +474,5 @@ def update_rule_book(book_id, data):
 def delete_rule_book(book_id):
     try:
         return handle_crud("Rule Book", "delete", doc_id=book_id)
-    except Exception as e:
-        return return_error(str(e), 500)
-
-@frappe.whitelist()
-def get_rule_book_detail(rule_book):
-    try:
-        if not rule_book:
-            return return_error("Rule Book is required", 400)
-
-        book_doc = frappe.get_doc("Rule Book", rule_book)
-
-        # Bypass the staff profile check entirely if the user is an Administrator
-        if not is_admin():
-            staff = get_staff_profile()
-            doc = frappe.get_doc("Staff Master", staff.name)
-            categories = [d.rule_category for d in doc.assigned_categories]
-
-            # Fetch child categories to grant inherited access
-            child_cats = frappe.db.get_all(
-                "Rule Category",
-                filters={
-                    "parent_category": ("in", categories),
-                    "is_active": 1
-                },
-                fields=["name"]
-            )
-
-            allowed_categories = categories + [c.name for c in child_cats]
-
-            if book_doc.rule_category not in allowed_categories:
-                return return_error(
-                    "You do not have permission to access this rule book", 403
-                )
-
-        if not book_doc.is_active:
-            return return_error("This rule book is inactive", 400)
-
-        return return_success({
-            "rule_book": book_doc.rule_book_name,
-            "youtube_url": book_doc.youtube_url,
-            "audio_file": book_doc.audio_file,
-            "rules": [
-                {"idx": r.idx_no, "rule": r.rule}
-                for r in book_doc.rules
-            ]
-        })
-
-    except frappe.DoesNotExistError:
-        return return_error("Rule book not found", 404)
-
-    except frappe.PermissionError as e:
-        return return_error(str(e), 403)
-
     except Exception as e:
         return return_error(str(e), 500)
