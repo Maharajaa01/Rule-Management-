@@ -1,6 +1,7 @@
 {
  "actions": [],
- "creation": "2024-01-01 00:00:00.000000",
+ "autoname": "STFC_BB.###",
+ "creation": "2024-01-01 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -13,6 +14,7 @@
   {
    "fieldname": "category_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Category Name",
    "reqd": 1
   },
@@ -27,31 +29,30 @@
    "label": "Description"
   },
   {
+   "default": "1",
    "fieldname": "is_active",
    "fieldtype": "Check",
-   "label": "Is Active",
-   "default": "1"
+   "label": "Is Active"
   }
  ],
  "links": [],
- "modified": "2024-01-01 00:00:00.000000",
+ "modified": "2026-07-06 22:15:39.415802",
  "modified_by": "Administrator",
  "module": "Rule Management",
  "name": "Staff Category",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
-   "role": "Administrator",
-   "read": 1,
-   "write": 1,
    "create": 1,
-   "delete": 1
+   "delete": 1,
+   "read": 1,
+   "role": "Administrator",
+   "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
- "custom": 0,
- "istable": 0,
- "is_submittable": 0
+ "states": []
 }
