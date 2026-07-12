@@ -28,7 +28,7 @@ def get_staff_profile(user=None):
     if hasattr(frappe.local, cache_key):
         return getattr(frappe.local, cache_key)
         
-    staff = frappe.db.get_all("Staff Master", filters={"user": user, "status": "Active"}, fields=["name", "employee_name", "staff_category", "access"])
+    staff = frappe.db.get_all("Staff Master", filters={"user": user, "status": "Active"}, fields=["name", "employee_name", "staff_category", "access"], ignore_permissions=True)
     if not staff:
         frappe.throw(_("Staff profile not found for current user."), frappe.PermissionError)
         
@@ -55,7 +55,7 @@ def login(login_id, password):
         user = frappe.session.user
         
         # Check Staff Master to ensure the logged-in user is an active staff
-        staff = frappe.db.get_all("Staff Master", filters={"user": user, "status": "Active"}, fields=["name", "employee_name", "staff_category", "access"])
+        staff = frappe.db.get_all("Staff Master", filters={"user": user, "status": "Active"}, fields=["name", "employee_name", "staff_category", "access"], ignore_permissions=True)
         if not staff:
             # Logout if they aren't an active staff member
             frappe.local.login_manager.logout()
@@ -79,7 +79,7 @@ def login(login_id, password):
         return return_error(str(e), 500)
 
 # --- Staff APIs ---
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def reset_password(new_password):
     try:
         user = frappe.session.user
@@ -92,7 +92,7 @@ def reset_password(new_password):
         return return_success(None, "Password updated successfully")
     except Exception as e:
         return return_error(str(e), 500)
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_logged_in_staff_profile():
     try:
         staff = get_staff_profile()
@@ -103,7 +103,7 @@ def get_logged_in_staff_profile():
     except Exception as e:
         return return_error(str(e), 500)
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_staff_dashboard():
     try:
         staff = get_staff_profile()
@@ -134,7 +134,7 @@ def get_staff_dashboard():
     except Exception as e:
         return return_error(str(e), 500)
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_assigned_rule_categories():
     try:
         if is_admin():
@@ -162,7 +162,7 @@ def get_assigned_rule_categories():
     except Exception as e:
         return return_error(str(e), 500)
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_rule_books(rule_category=None):
     try:
         filters = {"is_active": 1}
@@ -218,7 +218,7 @@ def get_rule_books(rule_category=None):
     except Exception as e:
         return return_error(str(e), 500)
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_rule_book_detail(rule_book):
     try:
         if not rule_book:
@@ -277,7 +277,7 @@ def admin_only():
     if not has_admin_panel_access():
         frappe.throw(_("Not permitted. Elevated access required."), frappe.PermissionError)
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def admin_dashboard():
     try:
         admin_only()
@@ -292,7 +292,7 @@ def admin_dashboard():
     except Exception as e:
         return return_error(str(e), 500)
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_staff_list():
     try:
         admin_only()
@@ -358,7 +358,7 @@ def handle_crud(doctype, action, doc_id=None, data=None):
         return return_success(None, f"{doctype} deleted successfully")
 
 # Staff CRUD
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def create_staff(data):
     try:
         if isinstance(data, str):
@@ -381,7 +381,7 @@ def create_staff(data):
     except Exception as e:
         return return_error(str(e), 500)
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def update_staff(staff_id, data):
     try:
         if isinstance(data, str):
@@ -406,7 +406,7 @@ def update_staff(staff_id, data):
     except Exception as e:
         return return_error(str(e), 500)
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def delete_staff(staff_id):
     try:
         return handle_crud("Staff Master", "delete", doc_id=staff_id)
@@ -414,21 +414,21 @@ def delete_staff(staff_id):
         return return_error(str(e), 500)
 
 # Rule Category CRUD
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def create_rule_category(data):
     try:
         return handle_crud("Rule Category", "create", data=data)
     except Exception as e:
         return return_error(str(e), 500)
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def update_rule_category(category_id, data):
     try:
         return handle_crud("Rule Category", "update", doc_id=category_id, data=data)
     except Exception as e:
         return return_error(str(e), 500)
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def delete_rule_category(category_id):
     try:
         return handle_crud("Rule Category", "delete", doc_id=category_id)
@@ -436,7 +436,7 @@ def delete_rule_category(category_id):
         return return_error(str(e), 500)
 
 # Rule Book CRUD
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def create_rule_book(data):
     try:
         if isinstance(data, str):
@@ -453,7 +453,7 @@ def create_rule_book(data):
     except Exception as e:
         return return_error(str(e), 500)
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def update_rule_book(book_id, data):
     try:
         if isinstance(data, str):
@@ -470,7 +470,7 @@ def update_rule_book(book_id, data):
     except Exception as e:
         return return_error(str(e), 500)
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def delete_rule_book(book_id):
     try:
         return handle_crud("Rule Book", "delete", doc_id=book_id)

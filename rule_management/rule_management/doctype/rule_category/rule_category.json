@@ -8,10 +8,7 @@
   "is_parent",
   "is_active",
   "category_name",
-  "parent_category",
-  "icon",
-  "section_break_xwrg",
-  "description"
+  "parent_category"
  ],
  "fields": [
   {
@@ -21,16 +18,6 @@
    "label": "Category Name",
    "reqd": 1,
    "unique": 1
-  },
-  {
-   "fieldname": "icon",
-   "fieldtype": "Data",
-   "label": "Icon"
-  },
-  {
-   "fieldname": "description",
-   "fieldtype": "Small Text",
-   "label": "Description"
   },
   {
    "default": "1",
@@ -50,14 +37,10 @@
    "fieldname": "is_parent",
    "fieldtype": "Check",
    "label": "Is Parent"
-  },
-  {
-   "fieldname": "section_break_xwrg",
-   "fieldtype": "Section Break"
   }
  ],
  "links": [],
- "modified": "2026-07-11 09:12:35.071448",
+ "modified": "2026-07-12 15:08:18.770558",
  "modified_by": "Administrator",
  "module": "Rule Management",
  "name": "Rule Category",
