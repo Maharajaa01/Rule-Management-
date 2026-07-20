@@ -476,3 +476,43 @@ def delete_rule_book(book_id):
         return handle_crud("Rule Book", "delete", doc_id=book_id)
     except Exception as e:
         return return_error(str(e), 500)
+
+import frappe
+from frappe import _
+
+@frappe.whitelist(allow_guest=True)
+def create_tattoo_lead(name1=None, mobile_number=None, appointment_date=None, appointment_time=None):
+    try:
+        # Validation
+        if not name1 or not mobile_number:
+            return {
+                "status": "error",
+                "message": "Name and Mobile Number are required"
+            }
+
+        # Create document
+        doc = frappe.get_doc({
+            "doctype": "Tattoo Studio Leads",
+            "name1": name1,
+            "mobile_number": mobile_number,
+            "appointment_date": appointment_date,
+            "appointment_time": appointment_time
+        })
+
+        doc.insert(ignore_permissions=True)
+        frappe.db.commit()
+
+        return {
+            "status": "success",
+            "message": "Lead created successfully",
+            "data": {
+                "name": doc.name
+            }
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Tattoo Lead API Error")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
